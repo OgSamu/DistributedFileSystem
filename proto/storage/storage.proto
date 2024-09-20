@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package storage;
+
+option go_package = "dfs/proto/storage;storage";
+
+service StorageService {
+  rpc StoreChunk(StoreChunkRequest) returns (StoreChunkResponse);
+  rpc RetrieveChunk(RetrieveChunkRequest) returns (RetrieveChunkResponse);
+}
+
+message StoreChunkRequest {
+  string chunk_id = 1;
+  bytes data = 2;
+}
+
+message StoreChunkResponse {
+  bool success = 1;
+}
+
+message RetrieveChunkRequest {
+  string chunk_id = 1;
+}
+
+message RetrieveChunkResponse {
+  bytes data = 1;
+}

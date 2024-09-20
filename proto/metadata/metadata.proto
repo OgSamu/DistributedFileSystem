@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package metadata;
+
+option go_package = "dfs/proto/metadata;metadata";
+
+service MetadataService {
+  rpc AllocateChunks(CreateFileRequest) returns (AllocateChunksResponse);
+  rpc GetFileInfo(GetFileRequest) returns (GetFileResponse);
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse); // New RPC
+}
+
+message CreateFileRequest {
+  string file_name = 1;
+  int64 file_size = 2;
+}
+
+message AllocateChunksResponse {
+  repeated ChunkInfo chunks = 1;
+}
+
+message GetFileRequest {
+  string file_name = 1;
+}
+
+message GetFileResponse {
+  repeated ChunkInfo chunks = 1;
+}
+
+message ListFilesRequest {}
+
+message ListFilesResponse {
+  repeated FileInfo files = 1;
+}
+
+message ChunkInfo {
+  string chunk_id = 1;
+  string storage_node = 2;
+}
+
+message FileInfo {
+  string file_name = 1;
+  int64 file_size = 2;
+  int32 num_chunks = 3;
+  int32 num_replicas = 4;
+  string upload_date = 5;
+}

@@ -1,0 +1,155 @@
+<!-- static/index.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Distributed File Storage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        h1 {
+            color: #333;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .progress {
+            width: 100%;
+            background-color: #f3f3f3;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #4caf50;
+            width: 0%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Distributed File Storage System</h1>
+
+    <div class="section">
+        <h2>Upload File</h2>
+        <form id="uploadForm">
+            <input type="file" id="fileInput" name="file" required>
+            <button type="submit">Upload</button>
+        </form>
+        <div class="progress" id="uploadProgress" style="display:none;">
+            <div class="progress-bar" id="uploadBar"></div>
+        </div>
+        <div id="uploadStatus"></div>
+    </div>
+
+    <div class="section">
+        <h2>Download File</h2>
+        <input type="text" id="downloadFileName" placeholder="Enter filename" required>
+        <button id="downloadButton">Download</button>
+        <div class="progress" id="downloadProgress" style="display:none;">
+            <div class="progress-bar" id="downloadBar"></div>
+        </div>
+        <div id="downloadStatus"></div>
+    </div>
+
+    <script>
+        // Upload File
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var formData = new FormData();
+            var fileField = document.getElementById('fileInput');
+
+            formData.append('file', fileField.files[0]);
+
+            var uploadProgress = document.getElementById('uploadProgress');
+            var uploadBar = document.getElementById('uploadBar');
+            var uploadStatus = document.getElementById('uploadStatus');
+
+            uploadProgress.style.display = 'block';
+            uploadBar.style.width = '0%';
+            uploadStatus.innerText = '';
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                return response.json().then(data => { throw new Error(data.error) });
+            })
+            .then(data => {
+                uploadBar.style.width = '100%';
+                uploadStatus.innerText = data.status;
+            })
+            .catch(error => {
+                uploadStatus.innerText = 'Error: ' + error.message;
+            });
+        });
+
+        // Download File
+        document.getElementById('downloadButton').addEventListener('click', function() {
+            var fileName = document.getElementById('downloadFileName').value;
+            if (!fileName) {
+                alert('Please enter a filename');
+                return;
+            }
+
+            var downloadProgress = document.getElementById('downloadProgress');
+            var downloadBar = document.getElementById('downloadBar');
+            var downloadStatus = document.getElementById('downloadStatus');
+
+            downloadProgress.style.display = 'block';
+            downloadBar.style.width = '0%';
+            downloadStatus.innerText = '';
+
+            fetch('/download/' + encodeURIComponent(fileName))
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => { throw new Error(data.error) });
+                }
+                var contentLength = response.headers.get('Content-Length');
+                if (!contentLength) {
+                    return response.blob();
+                }
+                var total = parseInt(contentLength, 10);
+                var loaded = 0;
+
+                return new Promise((resolve, reject) => {
+                    var reader = response.body.getReader();
+                    var chunks = [];
+                    reader.read().then(function processResult(result) {
+                        if (result.done) {
+                            resolve(new Blob(chunks));
+                            return;
+                        }
+                        loaded += result.value.length;
+                        var percent = (loaded / total) * 100;
+                        downloadBar.style.width = percent + '%';
+                        chunks.push(result.value);
+                        return reader.read().then(processResult);
+                    }).catch(error => {
+                        reject(error);
+                    });
+                });
+            })
+            .then(blob => {
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                downloadStatus.innerText = 'Download completed.';
+            })
+            .catch(error => {
+                downloadStatus.innerText = 'Error: ' + error.message;
+            });
+        });
+    </script>
+</body>
+</html>
